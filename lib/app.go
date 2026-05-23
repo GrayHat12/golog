@@ -139,6 +139,10 @@ func (app *Application) appendEntry(entry Entry) error {
 
 func (app *Application) AddEntry(entry *Entry) error {
 	if entry == nil {
+		currentWork, err := app.CurrentlyWorkingOn()
+		if err == nil && currentWork.IsBreak() {
+			return nil
+		}
 		// add break
 		return app.appendEntry(Entry{
 			Timestamp: time.Now().UTC(),
@@ -152,6 +156,54 @@ func (app *Application) AddEntry(entry *Entry) error {
 		}
 		return app.appendEntry(*entry)
 	}
+}
+
+func (app *Application) CurrentlyWorkingOn() (*Entry, error) {
+	app.lock.Lock()
+	defer app.lock.Unlock()
+
+	cursor := int64(-1)
+	line := ""
+
+	stat, err := app.file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	filesize := stat.Size()
+
+	for {
+		_, err := app.file.Seek(cursor, io.SeekEnd)
+		if err != nil {
+			return nil, err
+		}
+
+		cursor -= 1
+
+		char := make([]byte, 1)
+		_, err = app.file.Read(char)
+		if err != nil {
+			return nil, err
+		}
+
+		if cursor < -2 && (char[0] == 10 || char[0] == 13) { // stop if we find a line
+			break
+		}
+
+		line = fmt.Sprintf("%s%s", string(char), line)
+		if cursor <= -filesize { // stop if we are at the begining
+			break
+		}
+	}
+
+	var entry Entry
+
+	if err = json.Unmarshal([]byte(line), &entry); err != nil {
+		// You can choose to break, log, or skip here
+		// fmt.Printf("Got malformed line: %s (Error: %v)\n", line, err)
+		return nil, err
+	}
+
+	return &entry, nil
 }
 
 func (app *Application) Close() error {
