@@ -19,6 +19,7 @@ var (
 	homeErrStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffb4ab"))
 	homeBreakStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffd9e0")).Italic(true)
 	homeMarginStyle = lipgloss.NewStyle().Margin(2, 4)
+	homePathStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#626273")).Italic(true)
 )
 
 // ── Update ────────────────────────────────────────────────────────────────────
@@ -102,6 +103,13 @@ func (m model) viewHome() tea.View {
 	}
 	if m.err != nil {
 		out += "\n" + homeErrStyle.Render("✗  "+m.err.Error())
+	}
+
+	// ── Journal Path ──────────────────────────────────────────────────────────
+	if m.cfg.JournalPath != "" {
+		out += "\n\n" + homePathStyle.Render("📁 "+m.cfg.JournalPath)
+	} else {
+		out += "\n\n"
 	}
 
 	// ── Help bar ──────────────────────────────────────────────────────────────

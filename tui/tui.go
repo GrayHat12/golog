@@ -40,6 +40,7 @@ type EntryInput struct {
 // Config wires the TUI to your application logic.
 // All function fields are optional; nil values are safely ignored.
 type Config struct {
+	JournalPath string
 	// OnAddEntry is called when the user submits the add-entry form.
 	// Return a non-nil error to surface it on the home screen.
 	OnAddEntry func(e EntryInput) error

@@ -115,6 +115,7 @@ func main() {
 	_, _ = app.Summarise()
 
 	err = tui.Start(tui.Config{
+		JournalPath: logPath,
 		OnAddEntry: func(e tui.EntryInput) error {
 			labels := parseLabels(e.Labels) // split & trim yourself
 			return app.AddEntry(&lib.Entry{Name: e.Name, Labels: labels, Timestamp: time.Now().UTC()})
