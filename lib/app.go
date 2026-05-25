@@ -19,6 +19,7 @@ type Application struct {
 	lock             sync.RWMutex
 	nameSuggestion   map[string]struct{}
 	labelSuggestions map[string]struct{}
+	currentlyWorking *Entry
 }
 
 func NewApplication(path string) (*Application, error) {
@@ -134,6 +135,9 @@ func (app *Application) appendEntry(entry Entry) error {
 		return err
 	}
 	_, err = app.file.WriteString(string(jsonData) + "\n")
+	if err == nil {
+		app.currentlyWorking = &entry
+	}
 	return err
 }
 
@@ -159,51 +163,49 @@ func (app *Application) AddEntry(entry *Entry) error {
 }
 
 func (app *Application) CurrentlyWorkingOn() (*Entry, error) {
+	if app.currentlyWorking != nil {
+		return app.currentlyWorking, nil
+	}
+
 	app.lock.Lock()
 	defer app.lock.Unlock()
-
-	cursor := int64(-1)
-	line := ""
-
-	stat, err := app.file.Stat()
+	_, err := app.file.Seek(0, io.SeekStart)
 	if err != nil {
 		return nil, err
 	}
-	filesize := stat.Size()
 
-	for {
-		_, err := app.file.Seek(cursor, io.SeekEnd)
-		if err != nil {
-			return nil, err
-		}
-
-		cursor -= 1
-
-		char := make([]byte, 1)
-		_, err = app.file.Read(char)
-		if err != nil {
-			return nil, err
-		}
-
-		if cursor < -2 && (char[0] == 10 || char[0] == 13) { // stop if we find a line
-			break
-		}
-
-		line = fmt.Sprintf("%s%s", string(char), line)
-		if cursor <= -filesize { // stop if we are at the begining
-			break
-		}
-	}
-
+	reader := bufio.NewReader(app.file)
+	isFirstLine := true
 	var entry Entry
 
-	if err = json.Unmarshal([]byte(line), &entry); err != nil {
-		// You can choose to break, log, or skip here
-		// fmt.Printf("Got malformed line: %s (Error: %v)\n", line, err)
-		return nil, err
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+
+		line = strings.TrimSpace(line)
+		if line != "" {
+			if isFirstLine {
+				isFirstLine = false
+				continue
+			} else {
+				if err := json.Unmarshal([]byte(line), &entry); err != nil {
+					// You can choose to break, log, or skip here
+					fmt.Printf("Skipping malformed line: %s (Error: %v)\n", line, err)
+					continue
+				}
+			}
+		}
+
+		if err == io.EOF {
+			break
+		}
 	}
 
-	return &entry, nil
+	app.currentlyWorking = &entry
+
+	return app.currentlyWorking, nil
 }
 
 func (app *Application) Close() error {
