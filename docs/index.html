@@ -1,0 +1,2587 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GOLOG — Activity Analytics</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #0c0f14;
+      --surface: #111520;
+      --surface2: #161c28;
+      --surface3: #1c2436;
+      --border: #1e2840;
+      --border2: #2a3550;
+      --text: #b8c4d8;
+      --text-dim: #3e5070;
+      --text-mid: #607090;
+      --text-bright: #dce8fc;
+      --accent: #7c5ef0;
+      --accent2: #9d80ff;
+      --accent3: #c4b0ff;
+      --green: #2ee8a0;
+      --green2: #1a9960;
+      --pink: #f06090;
+      --blue: #5090f0;
+      --yellow: #e8b84a;
+      --orange: #e8804a;
+      --teal: #30d4c0;
+      --red: #e04050;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      min-height: 100vh;
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    /* ── Upload ───────────────────────────────────────────────── */
+    #upload-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 32px;
+      background: radial-gradient(ellipse at 50% 0%, #1a1f35 0%, var(--bg) 60%);
+    }
+
+    .upload-ascii {
+      color: var(--accent2);
+      font-size: 11px;
+      line-height: 1.3;
+      text-align: center;
+      opacity: .7;
+    }
+
+    .upload-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-bright);
+      letter-spacing: .15em;
+      text-align: center;
+    }
+
+    .upload-sub {
+      font-size: 11px;
+      color: var(--text-mid);
+      letter-spacing: .1em;
+      text-align: center;
+    }
+
+    .upload-dropzone {
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      padding: 48px 80px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+      min-width: 360px;
+    }
+
+    .upload-dropzone::before,
+    .upload-dropzone::after {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-color: var(--accent);
+      border-style: solid;
+    }
+
+    .upload-dropzone::before {
+      top: -1px;
+      left: -1px;
+      border-width: 1px 0 0 1px
+    }
+
+    .upload-dropzone::after {
+      top: -1px;
+      right: -1px;
+      border-width: 1px 1px 0 0
+    }
+
+    .upload-dropzone .corner-bl,
+    .upload-dropzone .corner-br {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-color: var(--accent);
+      border-style: solid;
+    }
+
+    .corner-bl {
+      bottom: -1px;
+      left: -1px;
+      border-width: 0 0 1px 1px
+    }
+
+    .corner-br {
+      bottom: -1px;
+      right: -1px;
+      border-width: 0 1px 1px 0
+    }
+
+    .upload-dropzone:hover,
+    .upload-dropzone.drag-over {
+      border-color: var(--accent);
+      background: var(--surface2);
+    }
+
+    .upload-icon {
+      font-size: 32px;
+      margin-bottom: 16px;
+      opacity: .5
+    }
+
+    .upload-text {
+      font-size: 13px;
+      color: var(--text-mid);
+      letter-spacing: .05em
+    }
+
+    .upload-hint {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      letter-spacing: .05em
+    }
+
+    .upload-btn {
+      background: var(--accent);
+      border: none;
+      color: white;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      padding: 10px 28px;
+      cursor: pointer;
+      transition: background .15s;
+      margin-top: 16px;
+    }
+
+    .upload-btn:hover {
+      background: var(--accent2)
+    }
+
+    #file-input {
+      display: none
+    }
+
+    /* ── App Shell ────────────────────────────────────────────── */
+    #app {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Header ───────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 16px;
+      height: 38px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent2);
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: .15em;
+    }
+
+    .header-logo .icon {
+      width: 20px;
+      height: 20px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .header-version {
+      color: var(--text-dim);
+      font-size: 10px
+    }
+
+    .header-sep {
+      color: var(--border2);
+      margin: 0 4px
+    }
+
+    .header-subtitle {
+      color: var(--text-mid);
+      font-size: 10px;
+      letter-spacing: .2em;
+      text-transform: uppercase
+    }
+
+    .header-stats {
+      margin-left: auto;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .hstat {
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .hstat-label {
+      color: var(--text-dim);
+      font-size: 9px;
+      letter-spacing: .1em;
+      text-transform: uppercase
+    }
+
+    .hstat-val {
+      color: var(--text-bright);
+      font-size: 11px;
+      font-weight: 600
+    }
+
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--green);
+      font-size: 10px;
+    }
+
+    .live-dot {
+      width: 5px;
+      height: 5px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .3
+      }
+    }
+
+    /* ── Tabs ─────────────────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .2em;
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+      text-transform: uppercase;
+    }
+
+    .tab-btn:hover {
+      color: var(--text)
+    }
+
+    .tab-btn.active {
+      color: var(--accent2);
+      border-bottom-color: var(--accent2)
+    }
+
+    /* ── Filter Bar ───────────────────────────────────────────── */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      padding: 6px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+    }
+
+    .filter-group-label {
+      color: var(--text-dim);
+      font-size: 9px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .filter-group input {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 11px;
+      outline: none;
+      width: 160px;
+    }
+
+    .filter-group input::placeholder {
+      color: var(--text-dim)
+    }
+
+    .date-display {
+      color: var(--text);
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+      min-width: 80px;
+    }
+
+    .date-display.has-value {
+      color: var(--accent3)
+    }
+
+    .label-chips {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      align-items: center
+    }
+
+    .chip {
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      color: var(--text-mid);
+      padding: 1px 7px;
+      font-size: 9px;
+      cursor: pointer;
+      transition: all .12s;
+      font-family: inherit;
+      letter-spacing: .05em;
+    }
+
+    .chip.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white
+    }
+
+    .chip:hover:not(.active) {
+      border-color: var(--accent2);
+      color: var(--accent3)
+    }
+
+    .filter-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      margin: 0 4px
+    }
+
+    .clear-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 9px;
+      padding: 3px 10px;
+      cursor: pointer;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      transition: all .15s;
+    }
+
+    .clear-btn:hover {
+      color: var(--red);
+      border-color: var(--red)
+    }
+
+    .filter-count {
+      margin-left: auto;
+      color: var(--text-dim);
+      font-size: 9px;
+      letter-spacing: .05em;
+      white-space: nowrap;
+    }
+
+    .filter-count span {
+      color: var(--accent3)
+    }
+
+    /* ── Summary Bar ──────────────────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      gap: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sstat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 16px;
+      border-right: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .sstat:last-child {
+      border-right: none
+    }
+
+    .sstat-label {
+      color: var(--text-dim);
+      font-size: 9px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: 3px
+    }
+
+    .sstat-val {
+      color: var(--text-bright);
+      font-size: 14px;
+      font-weight: 700
+    }
+
+    .sstat-val.accent {
+      color: var(--accent2)
+    }
+
+    .sstat-val.green {
+      color: var(--green)
+    }
+
+    .sstat-val.pink {
+      color: var(--pink)
+    }
+
+    /* ── Content Area ─────────────────────────────────────────── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      background: var(--bg);
+    }
+
+    .tab-panel {
+      display: none
+    }
+
+    .tab-panel.active {
+      display: block
+    }
+
+    /* ── Panel ────────────────────────────────────────────────── */
+    .panel {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      position: relative;
+    }
+
+    .panel-title {
+      position: absolute;
+      top: -9px;
+      left: 12px;
+      background: var(--surface);
+      padding: 0 6px;
+      font-size: 9px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .panel-body {
+      padding: 20px 16px 16px
+    }
+
+    /* ── Dashboard Grid ───────────────────────────────────────── */
+    .dash-grid-top {
+      display: grid;
+      grid-template-columns: 260px 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .dash-grid-mid {
+      display: grid;
+      grid-template-columns: 220px 1fr 1fr 200px;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .dash-grid-bot {
+      margin-bottom: 12px
+    }
+
+    /* ── Current Activity Panel ───────────────────────────────── */
+    .curr-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent2);
+      margin-bottom: 10px;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    .curr-elapsed {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+
+    .curr-idle {
+      color: var(--text-dim);
+      font-style: italic;
+      font-size: 13px;
+      margin-bottom: 10px
+    }
+
+    .curr-labels {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-bottom: 8px
+    }
+
+    .curr-label {
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      color: var(--accent3);
+      padding: 2px 8px;
+      font-size: 9px;
+      letter-spacing: .05em;
+    }
+
+    .curr-start {
+      color: var(--text-dim);
+      font-size: 10px
+    }
+
+    .curr-break-badge {
+      display: inline-block;
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      color: var(--text-mid);
+      padding: 2px 8px;
+      font-size: 9px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    /* ── Stat List ────────────────────────────────────────────── */
+    .stat-list {
+      list-style: none
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+
+    .stat-item:last-child {
+      border-bottom: none
+    }
+
+    .stat-rank {
+      color: var(--text-dim);
+      width: 16px;
+      text-align: right;
+      flex-shrink: 0;
+      font-size: 10px
+    }
+
+    .stat-name {
+      color: var(--text);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .stat-bar-wrap {
+      flex: 0 0 48px;
+      height: 3px;
+      background: var(--border2);
+      flex-shrink: 0
+    }
+
+    .stat-bar {
+      height: 100%;
+      background: var(--accent)
+    }
+
+    .stat-val {
+      color: var(--green);
+      font-size: 10px;
+      white-space: nowrap;
+      flex-shrink: 0
+    }
+
+    .tag-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+
+    .tag-item:last-child {
+      border-bottom: none
+    }
+
+    .tag-bracket {
+      color: var(--border2);
+      font-size: 11px
+    }
+
+    .tag-name {
+      color: var(--accent2);
+      flex: 1;
+      font-size: 11px
+    }
+
+    .tag-val {
+      color: var(--text-mid);
+      font-size: 10px;
+      white-space: nowrap
+    }
+
+    /* ── Recent Entries Grid ──────────────────────────────────── */
+    .entries-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .entry-card {
+      border-left: 2px solid var(--border2);
+      padding: 6px 10px;
+    }
+
+    .entry-card.is-break {
+      border-left-color: var(--text-dim);
+      opacity: .45
+    }
+
+    .entry-card.is-break .entry-cname {
+      color: var(--text-dim);
+      font-style: italic
+    }
+
+    .entry-ctime {
+      color: var(--text-dim);
+      font-size: 9px;
+      margin-bottom: 2px
+    }
+
+    .entry-cname {
+      color: var(--text);
+      font-size: 11px;
+      margin-bottom: 3px;
+      word-break: break-word
+    }
+
+    .entry-clabels {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-bottom: 2px
+    }
+
+    .entry-clabel {
+      color: var(--accent2);
+      font-size: 9px
+    }
+
+    .entry-cdur {
+      color: var(--green);
+      font-size: 9px
+    }
+
+    /* ── 24h Heatmap ──────────────────────────────────────────── */
+    .hour-heatmap {
+      display: flex;
+      gap: 2px;
+      margin: 8px 0 4px
+    }
+
+    .hour-cell {
+      flex: 1;
+      height: 28px;
+      background: var(--border2);
+      border-radius: 2px;
+      cursor: pointer;
+      position: relative;
+      transition: filter .1s;
+    }
+
+    .hour-cell:hover {
+      filter: brightness(1.4)
+    }
+
+    .hour-cell:hover::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      padding: 3px 8px;
+      font-size: 9px;
+      white-space: nowrap;
+      color: var(--text);
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .hour-labels {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-dim);
+      font-size: 9px;
+      padding: 0 0;
+    }
+
+    /* ── Calendar Heatmap ─────────────────────────────────────── */
+    .cal-heatmap-wrap {
+      display: flex;
+      gap: 3px;
+      overflow-x: auto;
+      padding-bottom: 4px
+    }
+
+    .cal-col {
+      display: flex;
+      flex-direction: column;
+      gap: 3px
+    }
+
+    .cal-month-labels {
+      display: flex;
+      gap: 3px;
+      margin-bottom: 4px;
+      overflow-x: auto;
+    }
+
+    .cal-day-labels {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+
+    .cal-day-label {
+      height: 14px;
+      font-size: 8px;
+      color: var(--text-dim);
+      line-height: 14px;
+    }
+
+    .cal-cell {
+      width: 14px;
+      height: 14px;
+      background: var(--border2);
+      border-radius: 2px;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      transition: filter .1s;
+    }
+
+    .cal-cell:hover {
+      filter: brightness(1.5);
+      z-index: 10;
+    }
+
+    .cal-cell:hover::after {
+      content: attr(data-tip);
+      position: fixed;
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      padding: 4px 8px;
+      font-size: 9px;
+      white-space: nowrap;
+      color: var(--text);
+      z-index: 1000;
+      pointer-events: none;
+      transform: translate(4px, -100%);
+    }
+
+    .cal-month-header {
+      display: flex;
+      gap: 3px;
+      margin-bottom: 2px;
+      padding-left: 24px;
+    }
+
+    .cal-month-label {
+      font-size: 9px;
+      color: var(--text-dim);
+    }
+
+    /* ── Calendar Tab Large View ──────────────────────────────── */
+    .cal-tab-layout {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 16px
+    }
+
+    .cal-legend {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      color: var(--text-dim);
+      font-size: 9px;
+      letter-spacing: .05em;
+    }
+
+    .cal-legend-cells {
+      display: flex;
+      gap: 3px
+    }
+
+    .cal-legend-cell {
+      width: 14px;
+      height: 14px;
+      border-radius: 2px
+    }
+
+    .cal-picker-wrap {
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      padding: 16px;
+    }
+
+    .flatpickr-inline-wrap .flatpickr-calendar {
+      background: var(--surface2) !important;
+      border: none !important;
+      box-shadow: none !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      width: 100% !important;
+    }
+
+    /* ── Entries Table ────────────────────────────────────────── */
+    .entries-table-wrap {
+      overflow-x: auto
+    }
+
+    .entries-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .entries-table th {
+      text-align: left;
+      padding: 7px 12px;
+      font-size: 9px;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .entries-table td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      vertical-align: middle;
+    }
+
+    .entries-table tbody tr:hover td {
+      background: var(--surface2)
+    }
+
+    .entries-table tr.row-break td {
+      opacity: .4
+    }
+
+    .entries-table tr.row-break .td-name {
+      font-style: italic
+    }
+
+    .td-time {
+      color: var(--text-dim);
+      white-space: nowrap;
+      font-size: 10px
+    }
+
+    .td-name {
+      color: var(--text-bright)
+    }
+
+    .td-labels {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap
+    }
+
+    .td-label {
+      color: var(--accent2);
+      font-size: 10px
+    }
+
+    .td-dur {
+      color: var(--green);
+      white-space: nowrap;
+      font-size: 10px
+    }
+
+    .td-end {
+      color: var(--text-dim);
+      white-space: nowrap;
+      font-size: 10px
+    }
+
+    mark {
+      background: none;
+      color: var(--yellow);
+      font-weight: 600
+    }
+
+    .row-filtered-out {
+      display: none
+    }
+
+    /* ── No Data ──────────────────────────────────────────────── */
+    .no-data {
+      text-align: center;
+      padding: 32px 16px;
+      color: var(--text-dim);
+      font-size: 11px;
+    }
+
+    .no-data-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+      opacity: .4
+    }
+
+    /* ── Footer ───────────────────────────────────────────────── */
+    .footer {
+      display: flex;
+      gap: 0;
+      padding: 0 12px;
+      height: 36px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .fkey {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 10px;
+      font-size: 10px;
+      color: var(--text-dim);
+      letter-spacing: .05em;
+      border-right: 1px solid var(--border);
+      height: 100%;
+    }
+
+    .fkey:first-child {
+      padding-left: 0
+    }
+
+    .fkey .kbind {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      padding: 1px 6px;
+      font-size: 9px;
+      color: var(--text-mid);
+    }
+
+    .fkey.highlight {
+      background: var(--accent);
+      color: white;
+      border-right-color: transparent;
+    }
+
+    .fkey.highlight .kbind {
+      background: rgba(255, 255, 255, .2);
+      border-color: transparent;
+      color: white
+    }
+
+    .footer-right {
+      margin-left: auto;
+      color: var(--text-dim);
+      font-size: 9px;
+      letter-spacing: .05em
+    }
+
+    /* ── Chart Containers ─────────────────────────────────────── */
+    .chart-outer {
+      position: relative;
+      width: 100%
+    }
+
+    /* ── Scrollbar ────────────────────────────────────────────── */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg)
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 2px
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-dim)
+    }
+
+    /* ── Flatpickr Theme ──────────────────────────────────────── */
+    .flatpickr-calendar {
+      background: var(--surface2) !important;
+      border: 1px solid var(--border2) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, .6) !important;
+      border-radius: 0 !important;
+    }
+
+    .flatpickr-day {
+      color: var(--text) !important;
+      border-radius: 0 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 11px !important;
+    }
+
+    .flatpickr-day:hover {
+      background: var(--surface3) !important;
+      border-color: var(--border2) !important
+    }
+
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange {
+      background: var(--accent) !important;
+      border-color: var(--accent) !important;
+      color: white !important;
+    }
+
+    .flatpickr-day.inRange {
+      background: var(--surface3) !important;
+      border-color: var(--border2) !important;
+      box-shadow: -5px 0 0 var(--surface3), 5px 0 0 var(--surface3) !important;
+    }
+
+    .flatpickr-day.flatpickr-disabled {
+      color: var(--text-dim) !important
+    }
+
+    .flatpickr-months {
+      background: var(--surface) !important
+    }
+
+    .flatpickr-month,
+    .flatpickr-monthDropdown-months {
+      background: var(--surface) !important;
+      color: var(--text) !important;
+    }
+
+    .flatpickr-current-month,
+    .flatpickr-monthDropdown-month {
+      color: var(--text) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+    }
+
+    .flatpickr-prev-month,
+    .flatpickr-next-month {
+      color: var(--text-mid) !important;
+      fill: var(--text-mid) !important;
+    }
+
+    .flatpickr-prev-month:hover,
+    .flatpickr-next-month:hover {
+      color: var(--text) !important;
+      fill: var(--text) !important
+    }
+
+    .flatpickr-weekday {
+      background: var(--surface) !important;
+      color: var(--text-dim) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 10px !important;
+    }
+
+    .numInputWrapper:hover {
+      background: transparent !important
+    }
+
+    .numInputWrapper input {
+      color: var(--text) !important;
+      font-family: 'JetBrains Mono', monospace !important
+    }
+
+    .numInputWrapper span {
+      border-color: var(--border) !important
+    }
+
+    .flatpickr-monthDropdown-months {
+      background: var(--surface3) !important;
+      border: 1px solid var(--border2) !important
+    }
+
+    /* ── Responsive tweaks ────────────────────────────────────── */
+    @media(max-width:1400px) {
+      .dash-grid-top {
+        grid-template-columns: 240px 1fr 1fr
+      }
+
+      .dash-grid-mid {
+        grid-template-columns: 200px 1fr 1fr 180px
+      }
+    }
+
+    @media(max-width:1100px) {
+      .dash-grid-top {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .dash-grid-mid {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .entries-grid {
+        grid-template-columns: repeat(2, 1fr)
+      }
+
+      .cal-tab-layout {
+        grid-template-columns: 1fr
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ══ UPLOAD SCREEN ══════════════════════════════════════════ -->
+  <div id="upload-screen">
+    <div class="upload-ascii">
+      ╔═════════════════════════════╗<br>
+      ║ G O L O G A N A L Y T I C S ║<br>
+      ╚═════════════════════════════╝
+    </div>
+    <div class="upload-title">GOLOG</div>
+    <div class="upload-sub">— ACTIVITY ANALYTICS DASHBOARD —</div>
+    <div class="upload-dropzone" id="dropzone">
+      <span class="corner-bl"></span><span class="corner-br"></span>
+      <div class="upload-icon">▤</div>
+      <div class="upload-text">Drop your journal file here</div>
+      <div class="upload-hint">or click to browse</div>
+      <button class="upload-btn" onclick="document.getElementById('file-input').click()">OPEN FILE</button>
+      <div class="upload-hint" style="margin-top:12px;font-size:9px">Expects GOLOG journal format (.json / .log / .txt)
+      </div>
+    </div>
+    <input type="file" id="file-input" accept=".json,.log,.txt,text/*">
+  </div>
+
+  <!-- ══ MAIN APP ════════════════════════════════════════════════ -->
+  <div id="app">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-logo">
+        <div class="icon">G</div>
+        GOLOG
+      </div>
+      <span class="header-version">v1.0.4</span>
+      <span class="header-sep">│</span>
+      <span class="header-subtitle">Activity Analytics</span>
+      <div class="header-stats">
+        <div class="hstat">
+          <span class="hstat-label">Total Entries</span>
+          <span class="hstat-val" id="h-total-entries">—</span>
+        </div>
+        <div class="hstat">
+          <span class="hstat-label">Date Range</span>
+          <span class="hstat-val" id="h-date-range">—</span>
+        </div>
+        <div id="live-indicator" class="live-indicator" style="display:none">
+          <span class="live-dot"></span>
+          <span id="live-text">LIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="dashboard">⬛ Dashboard</button>
+      <button class="tab-btn" data-tab="entries">≡ Entries</button>
+      <button class="tab-btn" data-tab="calendar">▦ Calendar</button>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <span class="filter-group-label">📅</span>
+        <span class="date-display" id="date-display" title="Click to pick date range">All time</span>
+        <input type="hidden" id="date-range-input">
+      </div>
+      <div class="filter-sep"></div>
+      <div class="filter-group">
+        <span class="filter-group-label">🔍</span>
+        <input type="text" id="search-input" placeholder="search entries…" oninput="onSearchInput()">
+      </div>
+      <div class="filter-sep"></div>
+      <span class="filter-group-label" style="color:var(--text-dim);font-size:9px;letter-spacing:.1em">TAGS</span>
+      <div class="label-chips" id="label-chips"></div>
+      <div class="filter-sep"></div>
+      <button class="clear-btn" onclick="clearFilters()">CLEAR</button>
+      <span class="filter-count" id="filter-count"></span>
+    </div>
+
+    <!-- Summary Bar -->
+    <div class="summary-bar">
+      <div class="sstat">
+        <div class="sstat-label">Total Time</div>
+        <div class="sstat-val accent" id="s-total-time">—</div>
+      </div>
+      <div class="sstat">
+        <div class="sstat-label">Active Days</div>
+        <div class="sstat-val" id="s-active-days">—</div>
+      </div>
+      <div class="sstat">
+        <div class="sstat-label">Avg / Day</div>
+        <div class="sstat-val green" id="s-avg-day">—</div>
+      </div>
+      <div class="sstat">
+        <div class="sstat-label">Sessions</div>
+        <div class="sstat-val" id="s-sessions">—</div>
+      </div>
+      <div class="sstat">
+        <div class="sstat-label">Top Activity</div>
+        <div class="sstat-val pink" id="s-top-activity">—</div>
+      </div>
+      <div class="sstat">
+        <div class="sstat-label">Peak Hour</div>
+        <div class="sstat-val" id="s-peak-hour">—</div>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- ── DASHBOARD TAB ── -->
+      <div id="tab-dashboard" class="tab-panel active">
+
+        <!-- Row 1 -->
+        <div class="dash-grid-top">
+
+          <!-- Current Activity -->
+          <div class="panel">
+            <span class="panel-title">Currently Working On</span>
+            <div class="panel-body" id="current-activity-panel">
+              <div class="no-data">
+                <div class="no-data-icon">◉</div>No data loaded
+              </div>
+            </div>
+          </div>
+
+          <!-- Last 7 Days -->
+          <div class="panel">
+            <span class="panel-title">Last 7 Days</span>
+            <div class="panel-body">
+              <div class="chart-outer" style="height:140px">
+                <canvas id="chart-last7"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Weekday Patterns -->
+          <div class="panel">
+            <span class="panel-title">Weekday Patterns</span>
+            <div class="panel-body">
+              <div class="chart-outer" style="height:140px">
+                <canvas id="chart-weekday"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="dash-grid-mid">
+
+          <!-- Activity Distribution -->
+          <div class="panel">
+            <span class="panel-title">Activity Dist</span>
+            <div class="panel-body" style="padding-bottom:10px">
+              <div class="chart-outer" style="height:120px">
+                <canvas id="chart-donut"></canvas>
+              </div>
+              <div id="donut-legend" style="margin-top:8px;font-size:9px;display:flex;flex-direction:column;gap:3px">
+              </div>
+            </div>
+          </div>
+
+          <!-- 24h Heatmap -->
+          <div class="panel">
+            <span class="panel-title">24h Activity Heatmap</span>
+            <div class="panel-body">
+              <div id="heatmap-24h"></div>
+              <div id="heatmap-peak" style="color:var(--text-dim);font-size:10px;text-align:center;margin-top:4px">
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Activities -->
+          <div class="panel">
+            <span class="panel-title">Top Activities</span>
+            <div class="panel-body">
+              <ul class="stat-list" id="top-activities-list"></ul>
+            </div>
+          </div>
+
+          <!-- Top Tags -->
+          <div class="panel">
+            <span class="panel-title">Top Tags</span>
+            <div class="panel-body">
+              <ul class="stat-list" id="top-tags-list" style="list-style:none"></ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 3: Recent Entries -->
+        <div class="panel dash-grid-bot">
+          <span class="panel-title">Recent Entries Log</span>
+          <div class="panel-body">
+            <div class="entries-grid" id="recent-entries-grid"></div>
+          </div>
+        </div>
+
+      </div><!-- /dashboard -->
+
+      <!-- ── ENTRIES TAB ── -->
+      <div id="tab-entries" class="tab-panel">
+        <div class="panel">
+          <span class="panel-title">All Entries</span>
+          <div class="panel-body" style="padding:0">
+            <div class="entries-table-wrap">
+              <table class="entries-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Timestamp</th>
+                    <th>Activity</th>
+                    <th>Labels</th>
+                    <th>End</th>
+                    <th>Duration</th>
+                  </tr>
+                </thead>
+                <tbody id="entries-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CALENDAR TAB ── -->
+      <div id="tab-calendar" class="tab-panel">
+        <div class="cal-tab-layout">
+          <!-- Heatmap -->
+          <div class="panel">
+            <span class="panel-title">Activity Heatmap — Last 90 Days</span>
+            <div class="panel-body">
+              <div id="cal-heatmap-large"></div>
+              <div class="cal-legend">
+                <span>Less</span>
+                <div class="cal-legend-cells" id="cal-legend-cells"></div>
+                <span>More</span>
+              </div>
+              <div style="color:var(--text-dim);font-size:9px;margin-top:8px">
+                Click a day to filter to that date. Click the date display in the filter bar to clear.
+              </div>
+            </div>
+          </div>
+
+          <!-- Inline Date Picker + selected range stats -->
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="panel">
+              <span class="panel-title">Date Range Picker</span>
+              <div class="panel-body" style="padding:16px 12px 12px">
+                <div id="inline-picker"></div>
+                <div style="margin-top:12px;display:flex;gap:8px">
+                  <button class="clear-btn" style="flex:1" onclick="setQuickRange(7)">LAST 7D</button>
+                  <button class="clear-btn" style="flex:1" onclick="setQuickRange(30)">LAST 30D</button>
+                  <button class="clear-btn" style="flex:1" onclick="setQuickRange(90)">LAST 90D</button>
+                </div>
+                <button class="clear-btn" style="width:100%;margin-top:8px" onclick="clearFilters()">CLEAR
+                  RANGE</button>
+              </div>
+            </div>
+
+            <div class="panel">
+              <span class="panel-title">Selected Period Stats</span>
+              <div class="panel-body" id="cal-period-stats">
+                <div class="no-data" style="padding:16px">Select a range to see stats</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="fkey"><span class="kbind">D</span> Dashboard</div>
+      <div class="fkey"><span class="kbind">E</span> Entries</div>
+      <div class="fkey"><span class="kbind">C</span> Calendar</div>
+      <div class="fkey"><span class="kbind">/</span> Search</div>
+      <div class="fkey"><span class="kbind">ESC</span> Clear filters</div>
+      <div class="fkey"><span class="kbind">O</span> Open file</div>
+      <div class="footer-right" id="footer-file">No file loaded</div>
+    </div>
+
+  </div><!-- /app -->
+
+  <!-- Tooltip -->
+  <div id="tooltip"
+    style="position:fixed;background:var(--surface3);border:1px solid var(--border2);padding:5px 10px;font-size:10px;color:var(--text);pointer-events:none;z-index:9999;display:none;font-family:'JetBrains Mono',monospace">
+  </div>
+
+  <script>
+    // ════════════════════════════════════════════════════════════════
+    // CONSTANTS & STATE
+    // ════════════════════════════════════════════════════════════════
+    const MAX_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours
+    const PALETTE = ['#7c5ef0', '#f06090', '#2ee8a0', '#5090f0', '#e8b84a', '#e8804a', '#30d4c0', '#e879f9', '#a0c840', '#ff8060'];
+    const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    let rawEntries = [];     // all parsed entries with computed durations
+    let allLabels = [];      // sorted unique labels
+    let charts = {};         // Chart.js instances
+    let timerInterval = null;
+    let inlinePicker = null;
+    let dateRangePicker = null;
+    let currentFileName = '';
+
+    const filterState = {
+      dateStart: null,
+      dateEnd: null,
+      labels: new Set(),
+      text: ''
+    };
+
+    // ════════════════════════════════════════════════════════════════
+    // PARSING
+    // ════════════════════════════════════════════════════════════════
+    function parseJournal(text) {
+      const lines = text.trim().split('\n');
+      const entries = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        // Skip the first-line header object
+        if (line.startsWith('{')) continue;
+
+        try {
+          const parsed = JSON.parse(line);
+          if (!Array.isArray(parsed) || parsed.length < 2) continue;
+          const [timestamp, name, labels] = parsed;
+          entries.push({
+            timestamp: new Date(timestamp),
+            name: typeof name === 'string' ? name : '',
+            labels: Array.isArray(labels) ? labels.filter(Boolean) : [],
+            isBreak: !name || name === ''
+          });
+        } catch (e) { /* skip malformed */ }
+      }
+
+      // Sort by timestamp ascending
+      entries.sort((a, b) => a.timestamp - b.timestamp);
+
+      // Compute durations
+      const now = Date.now();
+      for (let i = 0; i < entries.length; i++) {
+        const next = entries[i + 1];
+        const endTime = next ? next.timestamp.getTime() : now;
+        const raw = endTime - entries[i].timestamp.getTime();
+        entries[i].duration = Math.min(Math.max(raw, 0), MAX_DURATION_MS);
+        entries[i].endTime = new Date(entries[i].timestamp.getTime() + entries[i].duration);
+      }
+
+      return entries;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // FILTERING
+    // ════════════════════════════════════════════════════════════════
+    function getFilteredEntries() {
+      return rawEntries.filter(e => {
+        if (filterState.dateStart && e.timestamp < filterState.dateStart) return false;
+        if (filterState.dateEnd) {
+          const endOfDay = new Date(filterState.dateEnd);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (e.timestamp > endOfDay) return false;
+        }
+        if (filterState.labels.size > 0) {
+          const hasLabel = e.labels.some(l => filterState.labels.has(l));
+          if (!hasLabel) return false;
+        }
+        if (filterState.text) {
+          const q = filterState.text.toLowerCase();
+          const inName = e.name.toLowerCase().includes(q);
+          const inLabels = e.labels.some(l => l.toLowerCase().includes(q));
+          if (!inName && !inLabels) return false;
+        }
+        return true;
+      });
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // STAT COMPUTATIONS
+    // ════════════════════════════════════════════════════════════════
+    function getActivities(entries) {
+      // Returns map: name → totalMs
+      const map = new Map();
+      entries.filter(e => !e.isBreak).forEach(e => {
+        map.set(e.name, (map.get(e.name) || 0) + e.duration);
+      });
+      return map;
+    }
+
+    function getTagTotals(entries) {
+      const map = new Map();
+      entries.filter(e => !e.isBreak).forEach(e => {
+        e.labels.forEach(l => {
+          map.set(l, (map.get(l) || 0) + e.duration);
+        });
+      });
+      return map;
+    }
+
+    function getLast7DaysData(entries) {
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        d.setHours(0, 0, 0, 0);
+        days.push({ date: d, label: `${d.getDate()}/${d.getMonth() + 1}`, ms: 0 });
+      }
+      entries.filter(e => !e.isBreak).forEach(e => {
+        const d = new Date(e.timestamp);
+        d.setHours(0, 0, 0, 0);
+        const idx = days.findIndex(day => day.date.getTime() === d.getTime());
+        if (idx >= 0) days[idx].ms += e.duration;
+      });
+      return days;
+    }
+
+    function getWeekdayData(entries) {
+      // For each weekday 0=Sun..6=Sat, track days seen and total hours
+      const dayMap = Array.from({ length: 7 }, () => ({ totalMs: 0, daysSet: new Set() }));
+      entries.filter(e => !e.isBreak).forEach(e => {
+        const wd = e.timestamp.getDay();
+        const dk = dateKey(e.timestamp);
+        dayMap[wd].totalMs += e.duration;
+        dayMap[wd].daysSet.add(dk);
+      });
+      // Reorder Mon-Sun
+      const order = [1, 2, 3, 4, 5, 6, 0];
+      return order.map(wd => ({
+        label: DAYS[wd],
+        avgMs: dayMap[wd].daysSet.size > 0 ? dayMap[wd].totalMs / dayMap[wd].daysSet.size : 0,
+        totalMs: dayMap[wd].totalMs,
+        days: dayMap[wd].daysSet.size
+      }));
+    }
+
+    function getHourlyData(entries) {
+      const hours = Array.from({ length: 24 }, (_, i) => ({ hour: i, ms: 0 }));
+      entries.filter(e => !e.isBreak).forEach(e => {
+        const h = e.timestamp.getHours();
+        hours[h].ms += e.duration;
+      });
+      return hours;
+    }
+
+    function getCalendarData(entries, days = 90) {
+      const map = new Map();
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      cutoff.setHours(0, 0, 0, 0);
+
+      entries.filter(e => !e.isBreak && e.timestamp >= cutoff).forEach(e => {
+        const k = dateKey(e.timestamp);
+        map.set(k, (map.get(k) || 0) + e.duration);
+      });
+      return map;
+    }
+
+    function getActiveDays(entries) {
+      const s = new Set();
+      entries.filter(e => !e.isBreak).forEach(e => s.add(dateKey(e.timestamp)));
+      return s.size;
+    }
+
+    function getSummaryStats(entries) {
+      const active = entries.filter(e => !e.isBreak);
+      const totalMs = active.reduce((s, e) => s + e.duration, 0);
+      const activeDays = getActiveDays(entries);
+      const avgDayMs = activeDays > 0 ? totalMs / activeDays : 0;
+
+      const actMap = getActivities(entries);
+      let topActivity = '—';
+      let topMs = 0;
+      actMap.forEach((ms, name) => { if (ms > topMs) { topMs = ms; topActivity = name; } });
+
+      const hourly = getHourlyData(entries);
+      let peakHour = 0, peakMs = 0;
+      hourly.forEach(h => { if (h.ms > peakMs) { peakMs = h.ms; peakHour = h.hour; } });
+
+      return { totalMs, activeDays, avgDayMs, sessions: active.length, topActivity, peakHour };
+    }
+
+    function getTopN(map, n = 8) {
+      return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // UTILITIES
+    // ════════════════════════════════════════════════════════════════
+    function fmtMs(ms) {
+      if (ms < 60000) return `${Math.round(ms / 1000)}s`;
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      if (h > 0) return `${h}h ${m}m`;
+      return `${m}m`;
+    }
+
+    function fmtMsShort(ms) {
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      if (h > 0 && m > 0) return `${h}h ${m}m`;
+      if (h > 0) return `${h}h`;
+      return `${m}m`;
+    }
+
+    function fmtDate(d) {
+      return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    }
+
+    function fmtDateTime(d) {
+      const date = `${String(d.getDate()).padStart(2, '0')} ${MONTHS[d.getMonth()]}`;
+      const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      return `${date} ${time}`;
+    }
+
+    function fmtTime(d) {
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function dateKey(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function dateFromKey(k) {
+      const [y, m, d] = k.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function intensityColor(value, max) {
+      if (value === 0 || max === 0) return 'var(--border2)';
+      const t = value / max;
+      if (t < 0.15) return '#1e1a3a';
+      if (t < 0.35) return '#2d2060';
+      if (t < 0.55) return '#4a35a0';
+      if (t < 0.75) return '#6a4ee0';
+      return '#9d80ff';
+    }
+
+    function heatmapColorGreen(value, max) {
+      if (value === 0 || max === 0) return 'var(--border2)';
+      const t = value / max;
+      if (t < 0.2) return '#0e2820';
+      if (t < 0.4) return '#1a4835';
+      if (t < 0.6) return '#1e6845';
+      if (t < 0.8) return '#22a060';
+      return '#2ee8a0';
+    }
+
+    function highlight(text, query) {
+      if (!query) return escHtml(text);
+      const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      return escHtml(text).replace(re, '<mark>$1</mark>');
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // RENDER: HEADER / SUMMARY
+    // ════════════════════════════════════════════════════════════════
+    function renderHeader() {
+      if (!rawEntries.length) return;
+      const first = rawEntries[0].timestamp;
+      const last = rawEntries[rawEntries.length - 1].timestamp;
+      document.getElementById('h-total-entries').textContent = rawEntries.length;
+      document.getElementById('h-date-range').textContent = `${fmtDate(first)} → ${fmtDate(last)}`;
+    }
+
+    function renderSummary(entries) {
+      const s = getSummaryStats(entries);
+      document.getElementById('s-total-time').textContent = fmtMsShort(s.totalMs);
+      document.getElementById('s-active-days').textContent = s.activeDays;
+      document.getElementById('s-avg-day').textContent = fmtMsShort(s.avgDayMs);
+      document.getElementById('s-sessions').textContent = s.sessions;
+      document.getElementById('s-top-activity').textContent = s.topActivity.length > 14 ? s.topActivity.substring(0, 12) + '…' : s.topActivity;
+      document.getElementById('s-top-activity').title = s.topActivity;
+      document.getElementById('s-peak-hour').textContent = `${String(s.peakHour).padStart(2, '0')}:00`;
+    }
+
+    function renderFilterCount(filtered) {
+      const total = rawEntries.length;
+      const el = document.getElementById('filter-count');
+      if (filtered.length === total) {
+        el.innerHTML = `<span>${total}</span> entries`;
+      } else {
+        el.innerHTML = `<span>${filtered.length}</span> / ${total} entries`;
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // RENDER: CURRENT ACTIVITY
+    // ════════════════════════════════════════════════════════════════
+    function renderCurrentActivity() {
+      const panel = document.getElementById('current-activity-panel');
+      if (!rawEntries.length) {
+        panel.innerHTML = '<div class="no-data"><div class="no-data-icon">◉</div>No entries</div>';
+        return;
+      }
+
+      const last = rawEntries[rawEntries.length - 1];
+      const isLive = !last.isBreak;
+      const liveIndicator = document.getElementById('live-indicator');
+
+      if (isLive) {
+        liveIndicator.style.display = 'flex';
+        if (timerInterval) clearInterval(timerInterval);
+        const renderLive = () => {
+          const elapsed = Date.now() - last.timestamp.getTime();
+          const labelsHtml = last.labels.map(l =>
+            `<span class="curr-label">#${escHtml(l)}</span>`).join('');
+          panel.innerHTML = `
+        <div class="curr-name">${escHtml(last.name)}</div>
+        <div class="curr-elapsed">
+          <span class="live-dot"></span>
+          Time elapsed: <strong>${fmtMs(elapsed)}</strong>
+        </div>
+        ${labelsHtml ? `<div class="curr-labels">${labelsHtml}</div>` : ''}
+        <div class="curr-start">Started: ${fmtDateTime(last.timestamp)}</div>`;
+        };
+        renderLive();
+        timerInterval = setInterval(renderLive, 1000);
+      } else {
+        liveIndicator.style.display = 'none';
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        // Find last non-break
+        let lastActive = null;
+        for (let i = rawEntries.length - 1; i >= 0; i--) {
+          if (!rawEntries[i].isBreak) { lastActive = rawEntries[i]; break; }
+        }
+        if (lastActive) {
+          const labelsHtml = lastActive.labels.map(l =>
+            `<span class="curr-label">#${escHtml(l)}</span>`).join('');
+          panel.innerHTML = `
+        <div class="curr-break-badge">ON BREAK</div>
+        <div class="curr-name" style="font-size:15px;color:var(--text)">${escHtml(lastActive.name)}</div>
+        <div class="curr-idle">Last session: ${fmtMs(lastActive.duration)}</div>
+        ${labelsHtml ? `<div class="curr-labels">${labelsHtml}</div>` : ''}
+        <div class="curr-start">Ended: ${fmtDateTime(lastActive.endTime)}</div>`;
+        } else {
+          panel.innerHTML = '<div class="curr-idle">No active session</div>';
+        }
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // RENDER: CHARTS
+    // ════════════════════════════════════════════════════════════════
+    const chartDefaults = {
+      color: '#3e5070',
+      borderColor: '#1e2840',
+      font: { family: "'JetBrains Mono', monospace", size: 10 }
+    };
+
+    function destroyChart(key) {
+      if (charts[key]) { charts[key].destroy(); delete charts[key]; }
+    }
+
+    function renderLast7Days(entries) {
+      destroyChart('last7');
+      const data = getLast7DaysData(entries);
+      const maxMs = Math.max(...data.map(d => d.ms), 1);
+      const ctx = document.getElementById('chart-last7').getContext('2d');
+      charts.last7 = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.map(d => d.label),
+          datasets: [{
+            data: data.map(d => +(d.ms / 3600000).toFixed(2)),
+            backgroundColor: data.map(d => d.ms > 0 ? '#7c5ef0' : '#1e2840'),
+            hoverBackgroundColor: '#9d80ff',
+            borderWidth: 0,
+            borderRadius: 2,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: { label: ctx => `${fmtMsShort(data[ctx.dataIndex].ms)}` },
+              backgroundColor: '#1c2436', borderColor: '#2a3550', borderWidth: 1,
+              titleFont: { family: "'JetBrains Mono',monospace", size: 10 },
+              bodyFont: { family: "'JetBrains Mono',monospace", size: 10 },
+            }
+          },
+          scales: {
+            x: { grid: { color: '#1e2840' }, ticks: { color: '#3e5070', font: { family: "'JetBrains Mono',monospace", size: 9 } } },
+            y: {
+              grid: { color: '#1e2840' },
+              ticks: {
+                color: '#3e5070', font: { family: "'JetBrains Mono',monospace", size: 9 },
+                callback: v => v > 0 ? `${v}h` : '0'
+              },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    function renderWeekday(entries) {
+      destroyChart('weekday');
+      const data = getWeekdayData(entries);
+      const peakIdx = data.reduce((pi, d, i, a) => d.avgMs > a[pi].avgMs ? i : pi, 0);
+      const ctx = document.getElementById('chart-weekday').getContext('2d');
+      charts.weekday = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.map(d => d.label),
+          datasets: [{
+            data: data.map(d => +(d.avgMs / 3600000).toFixed(2)),
+            backgroundColor: data.map((d, i) => i === peakIdx ? '#9d80ff' : '#2a3550'),
+            hoverBackgroundColor: '#7c5ef0',
+            borderWidth: 0, borderRadius: 2,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => `avg ${fmtMsShort(data[ctx.dataIndex].avgMs)}`,
+                afterLabel: ctx => `${data[ctx.dataIndex].days} day(s) of data`
+              },
+              backgroundColor: '#1c2436', borderColor: '#2a3550', borderWidth: 1,
+              titleFont: { family: "'JetBrains Mono',monospace", size: 10 },
+              bodyFont: { family: "'JetBrains Mono',monospace", size: 10 },
+            }
+          },
+          scales: {
+            x: { grid: { color: '#1e2840' }, ticks: { color: '#3e5070', font: { family: "'JetBrains Mono',monospace", size: 9 } } },
+            y: {
+              grid: { color: '#1e2840' },
+              ticks: {
+                color: '#3e5070', font: { family: "'JetBrains Mono',monospace", size: 9 },
+                callback: v => v > 0 ? `${v}h` : '0'
+              },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    function renderDonut(entries) {
+      destroyChart('donut');
+      const tagMap = getTagTotals(entries);
+      const top = getTopN(tagMap, 6);
+      if (!top.length) {
+        // Fall back to activity grouping
+        const actMap = getActivities(entries);
+        const actTop = getTopN(actMap, 6);
+        if (!actTop.length) {
+          document.getElementById('chart-donut').getContext('2d').clearRect(0, 0, 9999, 9999);
+          document.getElementById('donut-legend').innerHTML = '<div class="no-data" style="padding:8px">No data</div>';
+          return;
+        }
+        renderDonutWith(actTop);
+        return;
+      }
+      renderDonutWith(top);
+    }
+
+    function renderDonutWith(top) {
+      const total = top.reduce((s, [, ms]) => s + ms, 0);
+      const ctx = document.getElementById('chart-donut').getContext('2d');
+      charts.donut = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: top.map(([name]) => name),
+          datasets: [{
+            data: top.map(([, ms]) => +(ms / 3600000).toFixed(2)),
+            backgroundColor: PALETTE.slice(0, top.length),
+            borderWidth: 2, borderColor: '#111520',
+            hoverBorderColor: '#fff',
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false,
+          cutout: '72%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const [name, ms] = top[ctx.dataIndex];
+                  const pct = Math.round(ms / total * 100);
+                  return `${name}: ${fmtMsShort(ms)} (${pct}%)`;
+                }
+              },
+              backgroundColor: '#1c2436', borderColor: '#2a3550', borderWidth: 1,
+              titleFont: { family: "'JetBrains Mono',monospace", size: 10 },
+              bodyFont: { family: "'JetBrains Mono',monospace", size: 10 },
+            }
+          }
+        }
+      });
+
+      // Legend
+      const leg = document.getElementById('donut-legend');
+      leg.innerHTML = top.map(([name, ms], i) => {
+        const pct = Math.round(ms / total * 100);
+        return `<div style="display:flex;align-items:center;gap:5px">
+      <span style="width:8px;height:8px;background:${PALETTE[i]};display:inline-block;flex-shrink:0"></span>
+      <span style="color:var(--text-mid);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:9px">${escHtml(name)}</span>
+      <span style="color:var(--text-dim);font-size:9px">${pct}%</span>
+    </div>`;
+      }).join('');
+    }
+
+    function renderHeatmap24h(entries) {
+      const hourly = getHourlyData(entries);
+      const maxMs = Math.max(...hourly.map(h => h.ms), 1);
+
+      const wrap = document.getElementById('heatmap-24h');
+      let peakHour = hourly.reduce((pi, h, i, a) => h.ms > a[pi].ms ? i : pi, 0);
+
+      wrap.innerHTML = `
+    <div class="hour-heatmap" id="hour-cells"></div>
+    <div class="hour-labels">
+      <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:59</span>
+    </div>`;
+
+      const cells = document.getElementById('hour-cells');
+      hourly.forEach(h => {
+        const cell = document.createElement('div');
+        cell.className = 'hour-cell';
+        cell.style.background = heatmapColorGreen(h.ms, maxMs);
+        cell.setAttribute('data-tip', `${String(h.hour).padStart(2, '0')}:00 — ${h.ms > 0 ? fmtMsShort(h.ms) : 'idle'}`);
+        cells.appendChild(cell);
+      });
+
+      const peak = document.getElementById('heatmap-peak');
+      if (hourly[peakHour].ms > 0) {
+        peak.textContent = `Peak activity: ${String(peakHour).padStart(2, '0')}:00 — ${String(peakHour + 1).padStart(2, '0')}:00`;
+      } else {
+        peak.textContent = '';
+      }
+    }
+
+    function renderTopActivities(entries) {
+      const actMap = getActivities(entries);
+      const top = getTopN(actMap, 8);
+      const maxMs = top.length ? top[0][1] : 1;
+      const el = document.getElementById('top-activities-list');
+      if (!top.length) {
+        el.innerHTML = '<li class="no-data" style="padding:16px">No activities</li>';
+        return;
+      }
+      el.innerHTML = top.map(([name, ms], i) => `
+    <li class="stat-item">
+      <span class="stat-rank">${i + 1}</span>
+      <span class="stat-name" title="${escHtml(name)}">${escHtml(name)}</span>
+      <div class="stat-bar-wrap"><div class="stat-bar" style="width:${Math.round(ms / maxMs * 100)}%"></div></div>
+      <span class="stat-val">${fmtMsShort(ms)}</span>
+    </li>`).join('');
+    }
+
+    function renderTopTags(entries) {
+      const tagMap = getTagTotals(entries);
+      const top = getTopN(tagMap, 8);
+      const el = document.getElementById('top-tags-list');
+      if (!top.length) {
+        el.innerHTML = '<li class="no-data" style="padding:16px">No tags</li>';
+        return;
+      }
+      el.innerHTML = top.map(([name, ms]) => `
+    <li class="stat-item">
+      <span class="tag-bracket">[</span>
+      <span class="tag-name">#${escHtml(name)}</span>
+      <span class="tag-bracket">]</span>
+      <span class="stat-val" style="margin-left:auto">${fmtMsShort(ms)}</span>
+    </li>`).join('');
+    }
+
+    function renderRecentEntries(entries) {
+      const grid = document.getElementById('recent-entries-grid');
+      const recent = [...entries].reverse().slice(0, 12);
+      if (!recent.length) {
+        grid.innerHTML = '<div class="no-data" style="grid-column:1/-1"><div class="no-data-icon">≡</div>No entries</div>';
+        return;
+      }
+      const q = filterState.text.toLowerCase();
+      grid.innerHTML = recent.map(e => {
+        const labelsHtml = e.labels.map(l =>
+          `<span class="entry-clabel">#${highlight(l, q)}</span>`).join('');
+        const range = e.isBreak ? 'break' : `${fmtTime(e.timestamp)} — ${fmtTime(e.endTime)}`;
+        return `<div class="entry-card${e.isBreak ? ' is-break' : ''}">
+      <div class="entry-ctime">${String(e.timestamp.getDate()).padStart(2, '0')} ${MONTHS[e.timestamp.getMonth()]}  ${range}</div>
+      <div class="entry-cname">${e.isBreak ? '— break —' : highlight(e.name, q)}</div>
+      ${labelsHtml ? `<div class="entry-clabels">${labelsHtml}</div>` : ''}
+      ${!e.isBreak ? `<div class="entry-cdur">↳ ${fmtMs(e.duration)}</div>` : ''}
+    </div>`;
+      }).join('');
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // RENDER: ENTRIES TABLE
+    // ════════════════════════════════════════════════════════════════
+    function renderEntriesTable(entries) {
+      const tbody = document.getElementById('entries-tbody');
+      const q = filterState.text.toLowerCase();
+      if (!entries.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="no-data"><div class="no-data-icon">≡</div>No matching entries</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = entries.slice().reverse().map((e, i) => {
+        const labelsHtml = e.labels.map(l =>
+          `<span class="td-label">#${highlight(l, q)}</span>`).join(' ');
+        return `<tr class="${e.isBreak ? 'row-break' : ''}">
+      <td class="td-time" style="color:var(--text-dim)">${entries.length - i}</td>
+      <td class="td-time">${fmtDateTime(e.timestamp)}</td>
+      <td class="td-name">${e.isBreak ? '<span style="color:var(--text-dim);font-style:italic">break</span>' : highlight(e.name, q)}</td>
+      <td><div class="td-labels">${labelsHtml}</div></td>
+      <td class="td-end">${e.isBreak ? '—' : fmtDateTime(e.endTime)}</td>
+      <td class="td-dur">${e.isBreak ? '—' : fmtMs(e.duration)}</td>
+    </tr>`;
+      }).join('');
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // RENDER: CALENDAR HEATMAP
+    // ════════════════════════════════════════════════════════════════
+    function buildCalendarHeatmap(entries, days, containerId, clickable) {
+      const calData = getCalendarData(entries, days);
+      const maxMs = calData.size > 0 ? Math.max(...calData.values()) : 1;
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+
+      // Build weeks
+      const startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - days + 1);
+      // Align to Sunday
+      const alignedStart = new Date(startDate);
+      alignedStart.setDate(alignedStart.getDate() - alignedStart.getDay());
+
+      const weeks = [];
+      const cur = new Date(alignedStart);
+      while (cur <= today) {
+        const week = [];
+        for (let d = 0; d < 7; d++) {
+          week.push(new Date(cur));
+          cur.setDate(cur.getDate() + 1);
+        }
+        weeks.push(week);
+      }
+
+      // Month labels
+      const monthLabels = [];
+      let lastMonth = -1;
+      weeks.forEach((week, wi) => {
+        const m = week[0].getMonth();
+        if (m !== lastMonth) {
+          monthLabels.push({ wi, label: MONTHS[m] });
+          lastMonth = m;
+        }
+      });
+
+      // Render
+      const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+      let html = `<div style="display:flex;gap:3px">`;
+
+      // Day labels column
+      html += `<div style="display:flex;flex-direction:column;gap:3px;padding-top:18px;margin-right:2px">`;
+      for (let d = 0; d < 7; d++) {
+        if (d % 2 === 1) {
+          html += `<div style="height:14px;font-size:8px;color:var(--text-dim);line-height:14px">${dayLabels[d]}</div>`;
+        } else {
+          html += `<div style="height:14px"></div>`;
+        }
+      }
+      html += `</div>`;
+
+      // Weeks with month headers
+      html += `<div style="display:flex;flex-direction:column;gap:0">`;
+      // Month label row
+      html += `<div style="display:flex;gap:3px;height:16px;margin-bottom:2px">`;
+      let monthLabelIdx = 0;
+      weeks.forEach((week, wi) => {
+        const ml = monthLabels[monthLabelIdx];
+        if (ml && ml.wi === wi) {
+          html += `<div style="min-width:14px;font-size:9px;color:var(--text-dim);white-space:nowrap">${ml.label}</div>`;
+          monthLabelIdx++;
+        } else {
+          html += `<div style="min-width:14px"></div>`;
+        }
+      });
+      html += `</div>`;
+
+      // Week columns
+      html += `<div style="display:flex;gap:3px">`;
+      weeks.forEach(week => {
+        html += `<div style="display:flex;flex-direction:column;gap:3px">`;
+        week.forEach(day => {
+          const k = dateKey(day);
+          const ms = calData.get(k) || 0;
+          const isFuture = day > new Date();
+          const isInRange = day >= startDate;
+          const bg = (isFuture || !isInRange) ? 'transparent' : intensityColor(ms, maxMs);
+          const tip = isFuture ? '' : `${fmtDate(day)}: ${ms > 0 ? fmtMsShort(ms) : 'idle'}`;
+          const clickAttr = clickable && !isFuture && isInRange ? `onclick="calCellClick('${k}')"` : '';
+          html += `<div class="cal-cell" style="background:${bg}" data-tip="${tip}" ${clickAttr}></div>`;
+        });
+        html += `</div>`;
+      });
+      html += `</div></div></div>`;
+
+      container.innerHTML = html;
+
+      // Legend for large view
+      if (containerId === 'cal-heatmap-large') {
+        const leg = document.getElementById('cal-legend-cells');
+        if (leg) {
+          const steps = [0, 0.25, 0.5, 0.75, 1.0];
+          leg.innerHTML = steps.map(t => {
+            const bg = t === 0 ? 'var(--border2)' : intensityColor(t * maxMs, maxMs);
+            return `<div class="cal-legend-cell" style="background:${bg}"></div>`;
+          }).join('');
+        }
+      }
+    }
+
+    function calCellClick(dateKey) {
+      const d = dateFromKey(dateKey);
+      setDateRange(d, d);
+    }
+
+    function renderCalendarPeriodStats(entries) {
+      const el = document.getElementById('cal-period-stats');
+      if (!el) return;
+      const active = entries.filter(e => !e.isBreak);
+      if (!active.length) {
+        el.innerHTML = '<div class="no-data" style="padding:16px">No data for this period</div>';
+        return;
+      }
+      const totalMs = active.reduce((s, e) => s + e.duration, 0);
+      const actMap = getActivities(entries);
+      const topActs = getTopN(actMap, 3);
+      const tagMap = getTagTotals(entries);
+      const topTags = getTopN(tagMap, 3);
+      el.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div>
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">TOTAL TIME</div>
+        <div style="font-size:18px;font-weight:700;color:var(--accent2)">${fmtMsShort(totalMs)}</div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">TOP ACTIVITIES</div>
+        ${topActs.map(([n, ms]) => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px">
+          <span style="color:var(--text)">${escHtml(n)}</span>
+          <span style="color:var(--green)">${fmtMsShort(ms)}</span>
+        </div>`).join('')}
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">TOP TAGS</div>
+        ${topTags.map(([n, ms]) => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px">
+          <span style="color:var(--accent2)">#${escHtml(n)}</span>
+          <span style="color:var(--text-mid)">${fmtMsShort(ms)}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // RENDER: LABEL CHIPS
+    // ════════════════════════════════════════════════════════════════
+    function renderLabelChips() {
+      const container = document.getElementById('label-chips');
+      container.innerHTML = allLabels.map(l => `
+    <button class="chip${filterState.labels.has(l) ? ' active' : ''}" onclick="toggleLabel('${escHtml(l)}')">#${escHtml(l)}</button>
+  `).join('');
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // MAIN REFRESH
+    // ════════════════════════════════════════════════════════════════
+    function refreshAll() {
+      const entries = getFilteredEntries();
+      renderFilterCount(entries);
+      renderSummary(entries);
+      renderCurrentActivity();
+
+      const activeTab = document.querySelector('.tab-panel.active')?.id;
+
+      if (activeTab === 'tab-dashboard' || !activeTab) {
+        renderLast7Days(entries);
+        renderWeekday(entries);
+        renderDonut(entries);
+        renderHeatmap24h(entries);
+        renderTopActivities(entries);
+        renderTopTags(entries);
+        renderRecentEntries(entries);
+      }
+      if (activeTab === 'tab-entries') {
+        renderEntriesTable(entries);
+      }
+      if (activeTab === 'tab-calendar') {
+        buildCalendarHeatmap(entries, 90, 'cal-heatmap-large', true);
+        renderCalendarPeriodStats(entries);
+      }
+    }
+
+    function refreshCurrentTab() {
+      const entries = getFilteredEntries();
+      const activeTab = document.querySelector('.tab-panel.active')?.id;
+      if (activeTab === 'tab-dashboard') {
+        renderLast7Days(entries);
+        renderWeekday(entries);
+        renderDonut(entries);
+        renderHeatmap24h(entries);
+        renderTopActivities(entries);
+        renderTopTags(entries);
+        renderRecentEntries(entries);
+      } else if (activeTab === 'tab-entries') {
+        renderEntriesTable(entries);
+      } else if (activeTab === 'tab-calendar') {
+        buildCalendarHeatmap(entries, 90, 'cal-heatmap-large', true);
+        renderCalendarPeriodStats(entries);
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // FILTER ACTIONS
+    // ════════════════════════════════════════════════════════════════
+    function toggleLabel(label) {
+      if (filterState.labels.has(label)) {
+        filterState.labels.delete(label);
+      } else {
+        filterState.labels.add(label);
+      }
+      renderLabelChips();
+      refreshAll();
+    }
+
+    function onSearchInput() {
+      filterState.text = document.getElementById('search-input').value;
+      refreshAll();
+    }
+
+    function clearFilters() {
+      filterState.dateStart = null;
+      filterState.dateEnd = null;
+      filterState.labels.clear();
+      filterState.text = '';
+      document.getElementById('search-input').value = '';
+      document.getElementById('date-display').textContent = 'All time';
+      document.getElementById('date-display').classList.remove('has-value');
+      if (dateRangePicker) dateRangePicker.clear();
+      if (inlinePicker) inlinePicker.clear();
+      renderLabelChips();
+      refreshAll();
+    }
+
+    function setDateRange(start, end) {
+      filterState.dateStart = start ? new Date(start.setHours(0, 0, 0, 0)) : null;
+      filterState.dateEnd = end ? new Date(end.setHours(23, 59, 59, 999)) : null;
+
+      const disp = document.getElementById('date-display');
+      if (filterState.dateStart && filterState.dateEnd) {
+        const s = filterState.dateStart;
+        const e = filterState.dateEnd;
+        if (s.toDateString() === e.toDateString()) {
+          disp.textContent = fmtDate(s);
+        } else {
+          disp.textContent = `${s.getDate()}/${s.getMonth() + 1} → ${e.getDate()}/${e.getMonth() + 1}`;
+        }
+        disp.classList.add('has-value');
+        if (dateRangePicker) dateRangePicker.setDate([s, e]);
+        if (inlinePicker) inlinePicker.setDate([s, e]);
+      } else {
+        disp.textContent = 'All time';
+        disp.classList.remove('has-value');
+      }
+      refreshAll();
+    }
+
+    function setQuickRange(days) {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - days + 1);
+      setDateRange(start, end);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // TAB SWITCHING
+    // ════════════════════════════════════════════════════════════════
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabId));
+      refreshCurrentTab();
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // FILE LOADING
+    // ════════════════════════════════════════════════════════════════
+    function loadFile(text, filename) {
+      console.log("text loaded", text);
+      rawEntries = parseJournal(text);
+      if (!rawEntries.length) {
+        alert('No valid entries found in the file. Check the format.');
+        return;
+      }
+
+      currentFileName = filename || 'journal';
+      document.getElementById('footer-file').textContent = `📄 ${currentFileName} (${rawEntries.length} entries)`;
+
+      // Collect all labels
+      const labelSet = new Set();
+      rawEntries.forEach(e => e.labels.forEach(l => labelSet.add(l)));
+      allLabels = [...labelSet].sort();
+
+      // Show app
+      document.getElementById('upload-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+
+      // Init date pickers
+      initDatePickers();
+
+      renderHeader();
+      renderLabelChips();
+
+      // Initial render
+      clearFilters();
+      refreshAll();
+    }
+
+    function initDatePickers() {
+      // Destroy old
+      if (dateRangePicker) { dateRangePicker.destroy(); dateRangePicker = null; }
+      if (inlinePicker) { inlinePicker.destroy(); inlinePicker = null; }
+
+      const pickerOpts = {
+        mode: 'range',
+        dateFormat: 'Y-m-d',
+        theme: 'dark',
+        onChange(dates) {
+          if (dates.length === 2) {
+            setDateRange(dates[0], dates[1]);
+          } else if (dates.length === 0) {
+            filterState.dateStart = null; filterState.dateEnd = null;
+            document.getElementById('date-display').textContent = 'All time';
+            document.getElementById('date-display').classList.remove('has-value');
+            refreshAll();
+          }
+        }
+      };
+
+      // Popup picker on date display click
+      dateRangePicker = flatpickr('#date-range-input', {
+        ...pickerOpts,
+        appendTo: document.body,
+        positionElement: document.getElementById('date-display'),
+      });
+
+      document.getElementById('date-display').addEventListener('click', () => {
+        dateRangePicker.open();
+      });
+
+      // Inline picker for calendar tab
+      const inlineEl = document.getElementById('inline-picker');
+      inlineEl.innerHTML = '';
+      inlinePicker = flatpickr(inlineEl, {
+        ...pickerOpts,
+        inline: true,
+      });
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // INIT & EVENT LISTENERS
+    // ════════════════════════════════════════════════════════════════
+    document.addEventListener('DOMContentLoaded', () => {
+
+      // Tab buttons
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+
+      // File input
+      const fileInput = document.getElementById('file-input');
+      fileInput.addEventListener('change', e => {
+        const file = e.target.files[0];
+        console.log("file", file);
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => loadFile(ev.target.result, file.name);
+        reader.readAsText(file);
+      });
+
+      // Drag & drop
+      const dropzone = document.getElementById('dropzone');
+      const uploadScreen = document.getElementById('upload-screen');
+
+      uploadScreen.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropzone.classList.add('drag-over');
+      });
+      uploadScreen.addEventListener('dragleave', e => {
+        if (!uploadScreen.contains(e.relatedTarget)) dropzone.classList.remove('drag-over');
+      });
+      uploadScreen.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => loadFile(ev.target.result, file.name);
+        reader.readAsText(file);
+      });
+
+      dropzone.addEventListener('click', () => fileInput.click());
+
+      // Also support drop on app (for reloading)
+      document.getElementById('app').addEventListener('dragover', e => e.preventDefault());
+      document.getElementById('app').addEventListener('drop', e => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => loadFile(ev.target.result, file.name);
+        reader.readAsText(file);
+      });
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', e => {
+        const tag = document.activeElement.tagName;
+        if (tag === 'INPUT') {
+          if (e.key === 'Escape') {
+            document.activeElement.blur();
+            clearFilters();
+          }
+          return;
+        }
+        switch (e.key.toLowerCase()) {
+          case 'd': switchTab('dashboard'); break;
+          case 'e': switchTab('entries'); break;
+          case 'c': switchTab('calendar'); break;
+          case 'o': fileInput.click(); break;
+          case '/':
+            e.preventDefault();
+            document.getElementById('search-input').focus();
+            break;
+          case 'escape': clearFilters(); break;
+        }
+      });
+
+    });
+  </script>
+</body>
+
+</html>

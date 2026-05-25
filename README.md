@@ -57,3 +57,5 @@ The log file uses an ultra-compact JSON array format for individual entries to s
 1. Line 1: Configuration Object (JSON)
 2. Line 2+: Activity Entries: `["2026-05-20T15:31:26Z", "Activity Name", ["tag1", "tag2"]]`
    Note: A break is denoted by an empty string for the activity name.
+
+> Note: Some parts of tui are ai assisted and docs/ is almost fully ai generated
