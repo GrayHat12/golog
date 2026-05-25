@@ -1,3 +1,4 @@
 *.log
 # Added by goreleaser init:
 dist/
+.env
