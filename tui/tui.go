@@ -87,6 +87,9 @@ type Config struct {
 	// LabelSuggestions returns the current pool of known labels/tags.
 	LabelSuggestions func() []string
 
+	// Prefil Label returns the current pool of known labels/tags.
+	PrefilLabels func(name *string) []string
+
 	GetSummary func() *lib.Summary
 }
 

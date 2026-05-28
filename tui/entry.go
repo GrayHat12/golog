@@ -54,11 +54,15 @@ func (ae addEntryModel) focusName() (addEntryModel, tea.Cmd) {
 }
 
 // focusLabels moves focus to the labels field.
-func (ae addEntryModel) focusLabels() (addEntryModel, tea.Cmd) {
+func (ae addEntryModel) focusLabels(cfg Config) (addEntryModel, tea.Cmd) {
 	ae.nameInput.Blur()
 	ae.labelsInput.Blur()
 	cmd := ae.labelsInput.Focus()
 	ae.focused = fieldLabels
+	name := strings.TrimSpace(ae.nameInput.Value())
+	suggestions := cfg.PrefilLabels(&name)
+	labelValue := strings.Join(suggestions, ", ")
+	ae.labelsInput.SetValue(labelValue)
 	return ae, cmd
 }
 
@@ -104,7 +108,7 @@ func (m model) updateAddEntry(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if ae.focused == fieldName {
 				// Move focus to the labels field.
 				var cmd tea.Cmd
-				ae, cmd = ae.focusLabels()
+				ae, cmd = ae.focusLabels(m.cfg)
 				m.addEntry = ae
 				return m, cmd
 			}

@@ -17,8 +17,7 @@ type Application struct {
 	file             *os.File
 	Config           *Config
 	lock             sync.RWMutex
-	nameSuggestion   map[string]struct{}
-	labelSuggestions map[string]struct{}
+	suggestions      map[string]map[string]struct{}
 	currentlyWorking *Entry
 }
 
@@ -27,7 +26,11 @@ func NewApplication(path string) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Application{file: file, lock: sync.RWMutex{}, nameSuggestion: make(map[string]struct{}), labelSuggestions: make(map[string]struct{})}, err
+	return &Application{
+		file:        file,
+		lock:        sync.RWMutex{},
+		suggestions: make(map[string]map[string]struct{}),
+	}, err
 }
 
 func (app *Application) Initialise() (*Config, error) {
@@ -154,11 +157,21 @@ func (app *Application) AddEntry(entry *Entry) error {
 		})
 	} else {
 		// add entry
-		app.nameSuggestion[entry.Name] = struct{}{}
-		for _, label := range entry.Labels {
-			app.labelSuggestions[label] = struct{}{}
+		err := app.appendEntry(*entry)
+		if err != nil {
+			return err
+		} else {
+			// add entry for suggestion
+			if _, exists := app.suggestions[entry.Name]; !exists {
+				app.suggestions[entry.Name] = make(map[string]struct{})
+			}
+			labels := map[string]struct{}{}
+			for _, tag := range entry.Labels {
+				labels[tag] = struct{}{}
+			}
+			app.suggestions[entry.Name] = labels
 		}
-		return app.appendEntry(*entry)
+		return err
 	}
 }
 
@@ -212,38 +225,60 @@ func (app *Application) Close() error {
 	return app.file.Close()
 }
 
-func (app *Application) GetNameSuggestions() ([]string, error) {
-	if len(app.nameSuggestion) > 0 {
-		return slices.Collect(maps.Keys(app.nameSuggestion)), nil
-	}
+func (app *Application) PopulateSuggestions() error {
 	summary, err := app.Summarise()
 	if err != nil {
-		return []string{}, err
+		return err
 	}
-	names := map[string]struct{}{}
 	for _, activity := range summary.Activities {
-		names[activity.Name] = struct{}{}
+		if _, ok := app.suggestions[activity.Name]; !ok {
+			app.suggestions[activity.Name] = map[string]struct{}{}
+		}
+		for _, tag := range activity.Tags {
+			app.suggestions[activity.Name][tag] = struct{}{}
+		}
 	}
+	return nil
+}
 
-	app.nameSuggestion = names
-
-	return slices.Collect(maps.Keys(names)), nil
+func (app *Application) GetNameSuggestions() ([]string, error) {
+	if len(app.suggestions) <= 0 {
+		err := app.PopulateSuggestions()
+		if err != nil {
+			return []string{}, err
+		}
+	}
+	return slices.Collect(maps.Keys(app.suggestions)), nil
 }
 
 func (app *Application) GetLabelSuggestions() ([]string, error) {
-	if len(app.labelSuggestions) > 0 {
-		return slices.Collect(maps.Keys(app.labelSuggestions)), nil
-	}
-	summary, err := app.Summarise()
-	if err != nil {
-		return []string{}, err
-	}
-	labels := map[string]struct{}{}
-	for _, activity := range summary.Activities {
-		for _, label := range activity.Tags {
-			labels[label] = struct{}{}
+	if len(app.suggestions) <= 0 {
+		err := app.PopulateSuggestions()
+		if err != nil {
+			return []string{}, err
 		}
 	}
-	app.labelSuggestions = labels
-	return slices.Collect(maps.Keys(labels)), nil
+	suggestions := []string{}
+	for _, labels := range app.suggestions {
+		suggestions = slices.AppendSeq(suggestions, maps.Keys(labels))
+	}
+	return suggestions, nil
+}
+
+func (app *Application) PrefilLabel(name *string) ([]string, error) {
+	if len(app.suggestions) <= 0 {
+		err := app.PopulateSuggestions()
+		if err != nil {
+			return []string{}, err
+		}
+	}
+	if name == nil {
+		return []string{}, nil
+	}
+	labels, ok := app.suggestions[*name]
+	if ok {
+		return slices.Collect(maps.Keys(labels)), nil
+	} else {
+		return []string{}, nil
+	}
 }

@@ -146,6 +146,10 @@ func main() {
 			suggestions, _ := app.GetLabelSuggestions()
 			return suggestions
 		},
+		PrefilLabels: func(name *string) []string {
+			suggestions, _ := app.PrefilLabel(name)
+			return suggestions
+		},
 
 		// your existing functions drop in directly:
 		GetNameSuggestion:   getSuggestion,
